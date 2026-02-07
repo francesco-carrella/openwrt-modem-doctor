@@ -1,0 +1,202 @@
+#!/bin/sh
+# rpcd shell plugin for modem-doctor
+# Provides JSON RPC API for LuCI web interface
+#
+# Reads all modem data from daemon state file — no live AT commands.
+# Uses jshn for JSON generation (standard OpenWrt pattern).
+#
+# Installed to: /usr/libexec/rpcd/luci.modem-doctor
+# Test: ubus call luci.modem-doctor get_status
+#
+# Copyright (c) 2026 modem-doctor contributors
+# Licensed under Apache-2.0
+
+. /usr/share/libubox/jshn.sh
+
+STATE_FILE="/tmp/modem-doctor-state"
+
+# Safely read a key=value from the state file
+read_state_val() {
+	local key="$1" default="$2"
+	if [ -f "$STATE_FILE" ]; then
+		local val
+		val=$(grep "^${key}=" "$STATE_FILE" 2>/dev/null | head -1 | cut -d= -f2-)
+		printf '%s' "${val:-$default}"
+	else
+		printf '%s' "$default"
+	fi
+}
+
+handle_get_status() {
+	# All data comes from the daemon state file — instant, no AT commands
+	local model generation firmware at_method interface wwan
+	local last_check last_action last_action_time last_avg_latency
+	local rat band rsrp rsrq rssi sinr cellid earfcn conn_state mcc mnc
+	local temperature fail_count version
+
+	model=$(read_state_val "model" "unknown")
+	generation=$(read_state_val "generation" "unknown")
+	firmware=$(read_state_val "firmware" "unknown")
+	at_method=$(read_state_val "at_method" "unknown")
+	interface=$(read_state_val "interface" "")
+	wwan=$(read_state_val "wwan" "")
+	last_check=$(read_state_val "last_check" "0")
+	last_action=$(read_state_val "last_action" "none")
+	last_action_time=$(read_state_val "last_action_time" "0")
+	last_avg_latency=$(read_state_val "last_avg_latency" "0")
+	rat=$(read_state_val "rat" "unknown")
+	band=$(read_state_val "band" "0")
+	rsrp=$(read_state_val "rsrp" "0")
+	rsrq=$(read_state_val "rsrq" "0")
+	rssi=$(read_state_val "rssi" "0")
+	sinr=$(read_state_val "sinr" "0")
+	cellid=$(read_state_val "cellid" "")
+	earfcn=$(read_state_val "earfcn" "0")
+	conn_state=$(read_state_val "conn_state" "unknown")
+	mcc=$(read_state_val "mcc" "")
+	mnc=$(read_state_val "mnc" "")
+	temperature=$(read_state_val "temperature" "0")
+	fail_count=$(read_state_val "fail_count" "0")
+	version=$(read_state_val "version" "0.0.0")
+
+	# Check service status
+	local service_running
+	if pgrep -f "modem-doctor.sh" >/dev/null 2>&1; then
+		service_running=1
+	else
+		service_running=0
+	fi
+
+	# Check if enabled
+	local enabled
+	enabled=$(uci -q get modem-doctor.main.enabled)
+	case "$enabled" in
+		1|yes|true|on) enabled=1 ;;
+		*) enabled=0 ;;
+	esac
+
+	json_init
+
+	json_add_object "modem"
+		json_add_string "model" "$model"
+		json_add_string "generation" "$generation"
+		json_add_string "firmware" "$firmware"
+		json_add_int "temperature" "${temperature:-0}"
+	json_close_object
+
+	json_add_object "signal"
+		json_add_string "rat" "$rat"
+		json_add_string "band" "$band"
+		json_add_int "rsrp" "${rsrp:-0}"
+		json_add_int "rsrq" "${rsrq:-0}"
+		json_add_int "rssi" "${rssi:-0}"
+		json_add_int "sinr" "${sinr:-0}"
+		json_add_string "cellid" "$cellid"
+		json_add_string "earfcn" "$earfcn"
+		json_add_string "state" "$conn_state"
+		json_add_string "mcc" "$mcc"
+		json_add_string "mnc" "$mnc"
+	json_close_object
+
+	json_add_object "watchdog"
+		json_add_boolean "enabled" "$enabled"
+		json_add_boolean "running" "$service_running"
+		json_add_string "last_action" "$last_action"
+		json_add_int "last_action_time" "${last_action_time:-0}"
+		json_add_int "last_avg_latency" "${last_avg_latency:-0}"
+		json_add_int "last_check" "${last_check:-0}"
+		json_add_int "fail_count" "${fail_count:-0}"
+	json_close_object
+
+	json_add_string "version" "$version"
+
+	json_dump
+	json_cleanup
+}
+
+handle_get_log() {
+	local lines=20
+	local input
+	read -r input
+	json_load "$input" 2>/dev/null
+	json_get_var lines "lines"
+	json_cleanup
+	[ -z "$lines" ] && lines=20
+
+	local log_entries
+	log_entries=$(logread 2>/dev/null | grep "modem-doctor" | tail -n "$lines")
+
+	json_init
+	json_add_array "log"
+	# Use heredoc redirect to avoid subshell (pipe would lose jshn state)
+	while IFS= read -r line; do
+		[ -z "$line" ] && continue
+		json_add_string "" "$line"
+	done <<-LOGEOF
+	$log_entries
+	LOGEOF
+	json_close_array
+	json_dump
+	json_cleanup
+}
+
+handle_run_ping() {
+	local count=3
+	local input
+	read -r input
+	json_load "$input" 2>/dev/null
+	json_get_var count "count"
+	json_cleanup
+	[ -z "$count" ] && count=3
+
+	# Validate count
+	case "$count" in
+		[1-9]|[1-9][0-9]) ;;
+		*) count=3 ;;
+	esac
+
+	local target
+	target=$(uci -q get modem-doctor.watchdog.ping_target)
+	[ -z "$target" ] && target="1.1.1.1"
+
+	local wwan
+	wwan=$(read_state_val "wwan" "")
+
+	local ping_output
+	if [ -n "$wwan" ]; then
+		ping_output=$(ping -c "$count" -W 3 -I "$wwan" "$target" 2>&1)
+	else
+		ping_output=$(ping -c "$count" -W 3 "$target" 2>&1)
+	fi
+
+	local avg
+	avg=$(echo "$ping_output" | grep -E "rtt|round-trip" | sed 's/.*= *//' | cut -d/ -f2 | cut -d. -f1 2>/dev/null)
+	local loss
+	loss=$(echo "$ping_output" | grep "packet loss" | grep -oE '[0-9]+%' | tr -d '%')
+
+	json_init
+	json_add_string "target" "$target"
+	json_add_int "count" "$count"
+	json_add_int "avg_ms" "${avg:-0}"
+	json_add_int "loss_pct" "${loss:-100}"
+	json_dump
+	json_cleanup
+}
+
+# Main dispatch — wrapped in function so `local` works correctly in ash
+main() {
+	case "$1" in
+		list)
+			echo '{ "get_status": {}, "get_log": { "lines": 20 }, "run_ping": { "count": 3 } }'
+			;;
+		call)
+			case "$2" in
+				get_status) handle_get_status ;;
+				get_log) handle_get_log ;;
+				run_ping) handle_run_ping ;;
+			esac
+			;;
+	esac
+}
+
+main "$@"

@@ -1,0 +1,28 @@
+config modem-doctor 'main'
+	option enabled '0'
+
+config watchdog 'watchdog'
+	option ping_target '1.1.1.1'
+	option ping_count '3'
+	option ping_timeout '5'
+	option latency_threshold '500'
+	option latency_pings '20'
+	option interval '120'
+	option recovery_wait '15'
+
+config fixes 'fixes'
+	option txqueuelen '100'
+	option disable_gro '1'
+	option disable_modem_sleep '1'
+	option tcp_no_slow_start '1'
+
+config sqm 'sqm'
+	option configure_sqm '1'
+	option download '48000'
+	option upload '24000'
+	option disable_sfe '1'
+
+config interface 'interface'
+	option auto_detect '1'
+	option iface_name ''
+	option wwan_device ''

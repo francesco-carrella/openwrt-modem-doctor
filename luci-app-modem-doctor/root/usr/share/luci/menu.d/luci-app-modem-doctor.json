@@ -1,0 +1,30 @@
+{
+	"admin/services/modem-doctor": {
+		"title": "Modem Doctor",
+		"order": 80,
+		"action": {
+			"type": "alias",
+			"path": "admin/services/modem-doctor/status"
+		},
+		"depends": {
+			"acl": ["luci-app-modem-doctor"],
+			"uci": { "modem-doctor": true }
+		}
+	},
+	"admin/services/modem-doctor/status": {
+		"title": "Status",
+		"order": 10,
+		"action": {
+			"type": "view",
+			"path": "modem-doctor/status"
+		}
+	},
+	"admin/services/modem-doctor/config": {
+		"title": "Configuration",
+		"order": 20,
+		"action": {
+			"type": "view",
+			"path": "modem-doctor/config"
+		}
+	}
+}

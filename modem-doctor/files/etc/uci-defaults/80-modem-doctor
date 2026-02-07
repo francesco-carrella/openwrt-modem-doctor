@@ -1,0 +1,42 @@
+#!/bin/sh
+# modem-doctor UCI defaults — runs once on first install
+
+# Only create config if it doesn't exist
+[ -f /etc/config/modem-doctor ] && return 0
+
+touch /etc/config/modem-doctor
+
+uci batch <<-EOF
+	set modem-doctor.main=modem-doctor
+	set modem-doctor.main.enabled='0'
+
+	set modem-doctor.watchdog=watchdog
+	set modem-doctor.watchdog.ping_target='1.1.1.1'
+	set modem-doctor.watchdog.ping_count='3'
+	set modem-doctor.watchdog.ping_timeout='5'
+	set modem-doctor.watchdog.latency_threshold='500'
+	set modem-doctor.watchdog.latency_pings='20'
+	set modem-doctor.watchdog.interval='120'
+	set modem-doctor.watchdog.recovery_wait='15'
+
+	set modem-doctor.fixes=fixes
+	set modem-doctor.fixes.txqueuelen='100'
+	set modem-doctor.fixes.disable_gro='1'
+	set modem-doctor.fixes.disable_modem_sleep='1'
+	set modem-doctor.fixes.tcp_no_slow_start='1'
+
+	set modem-doctor.sqm=sqm
+	set modem-doctor.sqm.configure_sqm='1'
+	set modem-doctor.sqm.download='48000'
+	set modem-doctor.sqm.upload='24000'
+	set modem-doctor.sqm.disable_sfe='1'
+
+	set modem-doctor.interface=interface
+	set modem-doctor.interface.auto_detect='1'
+	set modem-doctor.interface.iface_name=''
+	set modem-doctor.interface.wwan_device=''
+
+	commit modem-doctor
+EOF
+
+return 0

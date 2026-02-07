@@ -1,0 +1,21 @@
+{
+	"luci-app-modem-doctor": {
+		"description": "Grant access to LuCI app modem-doctor",
+		"read": {
+			"ubus": {
+				"luci.modem-doctor": ["get_status", "get_log"]
+			},
+			"uci": ["modem-doctor"],
+			"file": {
+				"/tmp/modem-doctor-state": ["read"]
+			},
+			"log": ["read"]
+		},
+		"write": {
+			"ubus": {
+				"luci.modem-doctor": ["run_ping"]
+			},
+			"uci": ["modem-doctor"]
+		}
+	}
+}
