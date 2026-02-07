@@ -29,8 +29,6 @@ jobs:
       matrix:
         target:
           - x86_64-openwrt-22.03
-          - x86_64-openwrt-23.05
-          - x86_64-openwrt-24.10
 
     steps:
       - uses: actions/checkout@v4

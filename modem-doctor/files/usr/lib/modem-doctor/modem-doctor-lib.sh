@@ -6,7 +6,7 @@
 # Copyright (c) 2026 modem-doctor contributors
 # Licensed under Apache-2.0
 
-MDD_VERSION="1.0.0"
+MDD_VERSION="0.1.0"
 MDD_LOG_TAG="modem-doctor"
 
 # Globals set by mdd_detect_modem

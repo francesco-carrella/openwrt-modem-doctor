@@ -3,15 +3,15 @@
 # Usage: ./create-ipk.sh
 #
 # Creates:
-#   modem-doctor_1.0.0-1_all.ipk
-#   luci-app-modem-doctor_1.0.0-1_all.ipk
+#   modem-doctor_0.1.0-1_all.ipk
+#   luci-app-modem-doctor_0.1.0-1_all.ipk
 
 set -e
 
 # Prevent macOS extended attributes (._files) in tarballs
 export COPYFILE_DISABLE=1
 
-PKG_VERSION="1.0.0-1"
+PKG_VERSION="0.1.0-1"
 OUTDIR="$(pwd)/dist"
 
 mkdir -p "$OUTDIR"
