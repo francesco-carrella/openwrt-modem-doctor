@@ -2,7 +2,6 @@
 
 [![License](https://img.shields.io/github/license/francesco-carrella/openwrt-modem-doctor?style=flat-square)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/francesco-carrella/openwrt-modem-doctor?style=flat-square)](../../releases)
-[![Downloads](https://img.shields.io/github/downloads/francesco-carrella/openwrt-modem-doctor/total?style=flat-square)](../../releases)
 [![OpenWrt](https://img.shields.io/badge/OpenWrt-22.03+-blue?style=flat-square&logo=openwrt)](https://openwrt.org)
 
 **OpenWrt package that fixes bufferbloat and monitors connectivity on LTE/5G modems.**
